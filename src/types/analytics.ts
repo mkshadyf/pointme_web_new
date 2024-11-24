@@ -1,3 +1,5 @@
+export type PaymentStatus = 'pending' | 'processing' | 'succeeded' | 'failed' | 'refunded';
+
 export interface PaymentAnalytics {
   id: string;
   business_id: string;

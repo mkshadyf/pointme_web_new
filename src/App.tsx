@@ -12,8 +12,10 @@ import { queryClient } from './lib/queryClient';
 import { useQueryError } from './hooks/useQueryError';
 import { registerServiceWorker, checkForUpdate } from './lib/pwa';
 import { syncService } from './services/syncService';
-import { pushNotifications } from './services/pushNotifications';
 import { notificationService } from './services/notificationService';
+import { performanceMonitor } from './services/performanceMonitor';
+import { errorTracker } from './services/errorTracker';
+import { supabase } from './lib/supabase';
 
 // Lazy load pages
 const Home = lazy(() => import('./pages/Home'));
@@ -33,15 +35,32 @@ function AppContent() {
     // Initialize PWA features
     registerServiceWorker();
     
-    // Initialize notifications
+    // Initialize services
     notificationService.init().catch(console.error);
-    
-    // Initialize offline sync
     syncService.init().catch(console.error);
     
+    // Initialize performance monitoring
+    performanceMonitor.setupObservers();
+    
+    // Set up error tracking with user context
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event: string, session: any) => {
+      if (session?.user) {
+        errorTracker.setUser({
+          id: session.user.id,
+          email: session.user.email!,
+        });
+      } else {
+        errorTracker.setUser(undefined);
+      }
+    });
+    
     // Check for updates every hour
-    const interval = setInterval(checkForUpdate, 3600000);
-    return () => clearInterval(interval);
+    const updateInterval = setInterval(checkForUpdate, 3600000);
+
+    return () => {
+      clearInterval(updateInterval);
+      subscription.unsubscribe();
+    };
   }, []);
 
   return (

@@ -15,13 +15,12 @@ export interface BookingDetails {
   };
   start_time: string;
   end_time: string;
-  status: BookingStatus;
-  payment_status: PaymentStatus;
+  status: string;
+  payment_status: string;
   total_amount: number;
   client_id: string;
   provider_id: string;
   notes?: string;
-  payment_intent?: string;
 }
 
 export interface BookingForm {
@@ -31,11 +30,13 @@ export interface BookingForm {
   notes?: string;
 }
 
-export interface BookingWithService extends BookingDetails {
+export interface BookingWithService extends Omit<BookingDetails, 'service'> {
   service: {
+    id: string;
     name: string;
     price: number;
     business: {
+      id: string;
       name: string;
       owner_id: string;
     };
