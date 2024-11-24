@@ -1,72 +1,58 @@
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
-import { useAuth } from '../hooks/useAuth';
-import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card';
-import LoadingScreen from '../components/LoadingScreen';
-import { ErrorMessage } from '../components/ErrorMessage';
-import type { Tables } from '../lib/supabase';
-
-type Booking = Tables['bookings']['Row'];
-
-interface BookingWithDetails extends Booking {
-  service: {
-    name: string;
-    business: {
-      name: string;
-    };
-  };
-}
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
+import { Button } from '../components/ui/Button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/Tabs';
+import { BookingHistory } from '../components/BookingHistory';
+import { CustomerPreferences } from '../components/CustomerPreferences';
+import { ServiceRecommendations } from '../components/ServiceRecommendations';
+import { RecurringBookingForm } from '../components/RecurringBookingForm';
+import { GroupBookingForm } from '../components/GroupBookingForm';
+import { WaitingList } from '../components/WaitingList';
 
 export default function Bookings() {
-  const { user } = useAuth();
-
-  const { data: bookings, isLoading, error } = useQuery<BookingWithDetails[]>({
-    queryKey: ['user-bookings', user?.id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('bookings')
-        .select(`
-          *,
-          service:services(
-            name,
-            business:businesses(name)
-          )
-        `)
-        .eq('client_id', user?.id)
-        .order('start_time', { ascending: false });
-
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!user?.id,
-  });
-
-  if (isLoading) return <LoadingScreen />;
-  if (error) return <ErrorMessage error={error} />;
+  const [activeTab, setActiveTab] = useState('history');
 
   return (
-    <div className="space-y-6">
-      <h1 className="text-2xl font-bold">My Bookings</h1>
-      <div className="grid gap-6">
-        {bookings?.map((booking) => (
-          <Card key={booking.id}>
-            <CardContent className="p-6">
-              <h2 className="font-semibold mb-2">{booking.service.name}</h2>
-              <p className="text-gray-600">{booking.service.business.name}</p>
-              <div className="mt-4 flex justify-between items-center">
-                <div>
-                  <p className="text-sm text-gray-500">
-                    {new Date(booking.start_time).toLocaleString()}
-                  </p>
-                  <p className="text-sm font-medium capitalize">
-                    Status: {booking.status}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+    <div className="container mx-auto py-6 space-y-6">
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList>
+          <TabsTrigger value="history">Booking History</TabsTrigger>
+          <TabsTrigger value="preferences">Preferences</TabsTrigger>
+          <TabsTrigger value="recommendations">Recommendations</TabsTrigger>
+          <TabsTrigger value="recurring">Recurring Bookings</TabsTrigger>
+          <TabsTrigger value="group">Group Bookings</TabsTrigger>
+          <TabsTrigger value="waitlist">Waiting List</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="history">
+          <BookingHistory />
+        </TabsContent>
+
+        <TabsContent value="preferences">
+          <CustomerPreferences />
+        </TabsContent>
+
+        <TabsContent value="recommendations">
+          <ServiceRecommendations />
+        </TabsContent>
+
+        <TabsContent value="recurring">
+          <RecurringBookingForm 
+            serviceId="default-service-id" 
+            onSuccess={() => setActiveTab('history')}
+          />
+        </TabsContent>
+
+        <TabsContent value="group">
+          <GroupBookingForm serviceId="default-service-id" />
+        </TabsContent>
+
+        <TabsContent value="waitlist">
+          <WaitingList serviceId="default-service-id" />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

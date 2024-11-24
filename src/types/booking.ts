@@ -1,44 +1,60 @@
-export type BookingStatus = 'pending' | 'confirmed' | 'cancelled' | 'completed';
-export type PaymentStatus = 'pending' | 'paid' | 'failed' | 'refunded';
+export type RecurringFrequency = 'daily' | 'weekly' | 'monthly';
+export type BookingStatus = 'pending' | 'confirmed' | 'cancelled' | 'completed' | 'waitlisted';
+export type ResourceType = 'room' | 'equipment' | 'staff';
 
-export interface BookingDetails {
+export interface RecurringBooking {
   id: string;
-  service: {
-    id: string;
-    name: string;
-    price: number;
-    business?: {
-      id: string;
-      name: string;
-      owner_id: string;
-    };
-  };
-  start_time: string;
-  end_time: string;
-  status: string;
-  payment_status: string;
-  total_amount: number;
-  client_id: string;
-  provider_id: string;
-  notes?: string;
+  serviceId: string;
+  clientId: string;
+  frequency: RecurringFrequency;
+  intervalCount: number;
+  startDate: string;
+  endDate?: string;
+  daysOfWeek?: number[];
+  dayOfMonth?: number;
+  timeOfDay: string;
+  status: BookingStatus;
 }
 
-export interface BookingForm {
-  service_id: string;
-  start_time: string;
-  end_time: string;
+export interface WaitlistEntry {
+  id: string;
+  serviceId: string;
+  clientId: string;
+  preferredDate: string;
+  preferredTime: string;
   notes?: string;
+  status: 'pending' | 'notified' | 'booked' | 'expired';
+  notifiedAt?: string;
 }
 
-export interface BookingWithService extends Omit<BookingDetails, 'service'> {
-  service: {
-    id: string;
-    name: string;
-    price: number;
-    business: {
-      id: string;
-      name: string;
-      owner_id: string;
+export interface GroupBooking {
+  id: string;
+  serviceId: string;
+  organizerId: string;
+  participants: string[];
+  maxParticipants: number;
+  startTime: string;
+  endTime: string;
+  status: BookingStatus;
+}
+
+export interface Resource {
+  id: string;
+  type: ResourceType;
+  name: string;
+  capacity?: number;
+  availability: {
+    [date: string]: {
+      [timeSlot: string]: boolean;
     };
   };
+}
+
+export interface BookingReminder {
+  id: string;
+  bookingId: string;
+  type: 'email' | 'sms' | 'push';
+  scheduledFor: string;
+  status: 'pending' | 'sent' | 'failed';
+  attempts: number;
 } 

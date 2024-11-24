@@ -1,3 +1,5 @@
+import { supabase } from '../lib/supabase';
+
 export class PerformanceMonitor {
   private metrics: {
     [key: string]: {
@@ -10,6 +12,10 @@ export class PerformanceMonitor {
     this.setupObservers();
     this.trackResources();
     this.trackErrors();
+  }
+
+  public init() {
+    this.setupObservers();
   }
 
   private setupObservers() {

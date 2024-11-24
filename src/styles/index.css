@@ -1,0 +1,27 @@
+@import './mobile.css';
+
+/* Mobile-specific toast styles */
+.mobile-toast {
+  margin-bottom: env(safe-area-inset-bottom);
+  width: calc(100% - 32px) !important;
+  max-width: none !important;
+}
+
+/* Mobile-specific transitions */
+.mobile-page-enter {
+  transform: translateX(100%);
+}
+
+.mobile-page-enter-active {
+  transform: translateX(0);
+  transition: transform 300ms ease-in-out;
+}
+
+.mobile-page-exit {
+  transform: translateX(0);
+}
+
+.mobile-page-exit-active {
+  transform: translateX(-100%);
+  transition: transform 300ms ease-in-out;
+} 

@@ -27,7 +27,15 @@
     "react-hot-toast": "^2.4.1",
     "react-router-dom": "^6.22.1",
     "tailwind-merge": "^2.2.1",
-    "zustand": "^4.5.1"
+    "zustand": "^4.5.1",
+    "@radix-ui/react-tabs": "^1.0.4",
+    "html5-qrcode": "^2.3.8",
+    "qrcode": "^1.5.3",
+    "@capacitor/core": "^5.0.0",
+    "@capacitor/geolocation": "^5.0.0",
+    "@capacitor/camera": "^5.0.0",
+    "@capacitor/push-notifications": "^5.0.0",
+    "@capacitor/local-notifications": "^5.0.0"
   },
   "devDependencies": {
     "@types/node": "^20.11.24",
@@ -43,6 +51,8 @@
     "postcss": "^8.4.35",
     "tailwindcss": "^3.4.1",
     "typescript": "^5.2.2",
-    "vite": "^5.1.4"
+    "vite": "^5.1.4",
+    "@types/qrcode": "^1.5.5",
+    "@capacitor/cli": "^5.0.0"
   }
 }

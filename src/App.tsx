@@ -16,6 +16,12 @@ import { notificationService } from './services/notificationService';
 import { performanceMonitor } from './services/performanceMonitor';
 import { errorTracker } from './services/errorTracker';
 import { supabase } from './lib/supabase';
+import { reminderService } from './services/reminderService';
+import { MobileProvider, useMobile } from './contexts/MobileContext';
+import { MobileAppLayout } from './layouts/MobileAppLayout';
+import { MobileLoadingScreen } from './components/mobile/MobileLoadingScreen';
+import { mobileRoutes } from './routes/mobileRoutes';
+import type { RouteObject } from 'react-router-dom';
 
 // Lazy load pages
 const Home = lazy(() => import('./pages/Home'));
@@ -27,8 +33,11 @@ const Services = lazy(() => import('./pages/Services'));
 const Admin = lazy(() => import('./pages/Admin'));
 const Business = lazy(() => import('./pages/Business'));
 const Bookings = lazy(() => import('./pages/Bookings'));
+const ServiceDetails = lazy(() => import('./pages/mobile/ServiceDetails'));
 
 function AppContent() {
+  const { isMobile } = useMobile();
+
   useQueryError(); // Add global error handling
 
   useEffect(() => {
@@ -40,10 +49,10 @@ function AppContent() {
     syncService.init().catch(console.error);
     
     // Initialize performance monitoring
-    performanceMonitor.setupObservers();
+    performanceMonitor.init();
     
     // Set up error tracking with user context
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event: string, session: any) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: string, session: any) => {
       if (session?.user) {
         errorTracker.setUser({
           id: session.user.id,
@@ -57,67 +66,93 @@ function AppContent() {
     // Check for updates every hour
     const updateInterval = setInterval(checkForUpdate, 3600000);
 
+    const reminderInterval = setInterval(() => {
+      reminderService.processReminders().catch(console.error);
+    }, 60000); // Check every minute
+
     return () => {
       clearInterval(updateInterval);
       subscription.unsubscribe();
+      clearInterval(reminderInterval);
     };
   }, []);
+
+  const renderRoutes = (routes: RouteObject[]) => {
+    return routes.map((route) => {
+      if (route.children) {
+        return (
+          <Route key={route.path || 'root'} {...route}>
+            {renderRoutes(route.children)}
+          </Route>
+        );
+      }
+      return <Route key={route.path || 'index'} {...route} />;
+    });
+  };
 
   return (
     <ErrorBoundary>
       <BrowserRouter>
         <AuthProvider>
           <NavigationProvider>
-            <Suspense fallback={<LoadingScreen />}>
+            <Suspense fallback={isMobile ? <MobileLoadingScreen /> : <LoadingScreen />}>
               <Routes>
-                {/* Auth Routes */}
-                <Route path="/login" element={<Login />} />
-                <Route path="/onboarding" element={<Onboarding />} />
-                <Route path="/signup/customer" element={<CustomerSignup />} />
-                <Route path="/signup/business" element={<BusinessSignup />} />
+                {isMobile ? (
+                  renderRoutes(mobileRoutes)
+                ) : (
+                  // Desktop Routes
+                  <>
+                    {/* Auth Routes */}
+                    <Route path="/login" element={<Login />} />
+                    <Route path="/onboarding" element={<Onboarding />} />
+                    <Route path="/signup/customer" element={<CustomerSignup />} />
+                    <Route path="/signup/business" element={<BusinessSignup />} />
 
-                {/* Admin Routes */}
-                <Route
-                  path="/admin/*"
-                  element={
-                    <PrivateRoute allowedRoles={['admin', 'super_admin']}>
-                      <Admin />
-                    </PrivateRoute>
-                  }
-                />
+                    {/* Admin Routes */}
+                    <Route
+                      path="/admin/*"
+                      element={
+                        <PrivateRoute allowedRoles={['admin', 'super_admin']}>
+                          <Admin />
+                        </PrivateRoute>
+                      }
+                    />
 
-                {/* Business Routes */}
-                <Route
-                  path="/business/*"
-                  element={
-                    <PrivateRoute allowedRoles={['provider']}>
-                      <Business />
-                    </PrivateRoute>
-                  }
-                />
+                    {/* Business Routes */}
+                    <Route
+                      path="/business/*"
+                      element={
+                        <PrivateRoute allowedRoles={['provider']}>
+                          <Business />
+                        </PrivateRoute>
+                      }
+                    />
 
-                {/* Main Layout Routes */}
-                <Route path="/" element={<MainLayout />}>
-                  <Route index element={<Home />} />
-                  <Route path="services" element={<Services />} />
-                  <Route
-                    path="bookings"
-                    element={
-                      <PrivateRoute allowedRoles={['client']}>
-                        <Bookings />
-                      </PrivateRoute>
-                    }
-                  />
-                  {/* Add more routes as needed */}
-                </Route>
+                    {/* Main Layout Routes */}
+                    <Route path="/" element={<MainLayout />}>
+                      <Route index element={<Home />} />
+                      <Route path="services" element={<Services />} />
+                      <Route
+                        path="bookings"
+                        element={
+                          <PrivateRoute allowedRoles={['client']}>
+                            <Bookings />
+                          </PrivateRoute>
+                        }
+                      />
+                      {/* Add more routes as needed */}
+                    </Route>
 
-                {/* Catch all route */}
-                <Route path="*" element={<Navigate to="/" replace />} />
+                    {/* Catch all route */}
+                    <Route path="*" element={<Navigate to="/" replace />} />
+                  </>
+                )}
               </Routes>
             </Suspense>
             <Toaster 
-              position="bottom-right"
+              position={isMobile ? "bottom-center" : "bottom-right"}
               toastOptions={{
+                className: isMobile ? 'mobile-toast' : '',
                 duration: 5000,
                 error: {
                   duration: 10000,
@@ -134,7 +169,9 @@ function AppContent() {
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <AppContent />
+      <MobileProvider>
+        <AppContent />
+      </MobileProvider>
     </QueryClientProvider>
   );
 }
