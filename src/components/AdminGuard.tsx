@@ -17,7 +17,7 @@ export default function AdminGuard({ children }: AdminGuardProps) {
     );
   }
 
-  if (!user || user.user_metadata?.role !== 'admin') {
+  if (!user || (user.role !== 'admin' && user.role !== 'super_admin')) {
     return <Navigate to="/" replace />;
   }
 

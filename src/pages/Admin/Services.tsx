@@ -17,7 +17,11 @@ export default function Services() {
     price: 0,
     duration: 30,
     category_id: '',
-    provider_id: ''
+    image_url: null as string | null,
+    business_id: '',
+    status: 'active' as const,
+    rating: null as number | null,
+    reviews_count: 0
   });
 
   const queryClient = useQueryClient();
@@ -52,14 +56,13 @@ export default function Services() {
   });
 
   const createMutation = useMutation({
-    mutationFn: async (service: Omit<Service, 'id' | 'created_at' | 'updated_at'>) => {
-      const { data, error } = await supabase
+    mutationFn: async (service: typeof newService) => {
+      const { error } = await supabase
         .from('services')
         .insert([service])
         .select()
         .single();
       if (error) throw error;
-      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['services'] });
@@ -69,7 +72,11 @@ export default function Services() {
         price: 0,
         duration: 30,
         category_id: '',
-        provider_id: ''
+        image_url: null,
+        business_id: '',
+        status: 'active',
+        rating: null,
+        reviews_count: 0
       });
       toast.success('Service created successfully');
     },

@@ -1,79 +1,70 @@
-import { motion } from 'framer-motion';
-import { Calendar, Clock, MapPin } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/Card';
-import { Button } from '../components/ui/Button';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '../lib/supabase';
+import { useAuth } from '../hooks/useAuth';
+import { Card, CardHeader, CardTitle, CardContent } from '../components/ui/Card';
+import LoadingScreen from '../components/LoadingScreen';
+import { ErrorMessage } from '../components/ErrorMessage';
+import type { Tables } from '../lib/supabase';
 
-const bookings = [
-  {
-    id: 1,
-    service: 'Haircut & Styling',
-    provider: 'Style Studio',
-    date: '2024-03-15',
-    time: '10:00 AM',
-    location: '123 Style Street',
-    status: 'upcoming'
-  },
-  {
-    id: 2,
-    service: 'Massage Therapy',
-    provider: 'Wellness Spa',
-    date: '2024-03-20',
-    time: '2:30 PM',
-    location: '456 Wellness Ave',
-    status: 'upcoming'
-  }
-];
+type Booking = Tables['bookings']['Row'];
+
+interface BookingWithDetails extends Booking {
+  service: {
+    name: string;
+    business: {
+      name: string;
+    };
+  };
+}
 
 export default function Bookings() {
-  return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">My Bookings</h1>
-        <p className="text-gray-600 mt-2">Manage your upcoming and past appointments</p>
-      </div>
+  const { user } = useAuth();
 
-      <div className="space-y-4">
-        {bookings.map((booking) => (
-          <motion.div
-            key={booking.id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
-          >
-            <Card>
-              <CardHeader>
-                <div className="flex justify-between items-start">
-                  <div>
-                    <CardTitle className="text-xl">{booking.service}</CardTitle>
-                    <p className="text-gray-600">{booking.provider}</p>
-                  </div>
-                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                    {booking.status}
-                  </span>
+  const { data: bookings, isLoading, error } = useQuery<BookingWithDetails[]>({
+    queryKey: ['user-bookings', user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('bookings')
+        .select(`
+          *,
+          service:services(
+            name,
+            business:businesses(name)
+          )
+        `)
+        .eq('client_id', user?.id)
+        .order('start_time', { ascending: false });
+
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user?.id,
+  });
+
+  if (isLoading) return <LoadingScreen />;
+  if (error) return <ErrorMessage error={error} />;
+
+  return (
+    <div className="space-y-6">
+      <h1 className="text-2xl font-bold">My Bookings</h1>
+      <div className="grid gap-6">
+        {bookings?.map((booking) => (
+          <Card key={booking.id}>
+            <CardContent className="p-6">
+              <h2 className="font-semibold mb-2">{booking.service.name}</h2>
+              <p className="text-gray-600">{booking.service.business.name}</p>
+              <div className="mt-4 flex justify-between items-center">
+                <div>
+                  <p className="text-sm text-gray-500">
+                    {new Date(booking.start_time).toLocaleString()}
+                  </p>
+                  <p className="text-sm font-medium capitalize">
+                    Status: {booking.status}
+                  </p>
                 </div>
-              </CardHeader>
-              <CardContent>
-                <div className="grid md:grid-cols-3 gap-4">
-                  <div className="flex items-center gap-2">
-                    <Calendar className="h-5 w-5 text-gray-400" />
-                    <span>{booking.date}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Clock className="h-5 w-5 text-gray-400" />
-                    <span>{booking.time}</span>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <MapPin className="h-5 w-5 text-gray-400" />
-                    <span>{booking.location}</span>
-                  </div>
-                </div>
-                <div className="flex justify-end gap-4 mt-4">
-                  <Button variant="outline">Reschedule</Button>
-                  <Button variant="ghost" className="text-red-600 hover:text-red-700">Cancel</Button>
-                </div>
-              </CardContent>
-            </Card>
-          </motion.div>
+              </div>
+            </CardContent>
+          </Card>
         ))}
       </div>
     </div>

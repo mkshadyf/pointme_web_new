@@ -9,12 +9,31 @@ import { Input } from '../../components/ui/Input';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
 import toast from 'react-hot-toast';
 
+type UserRole = 'admin' | 'provider' | 'client';
+
+interface EditingUser {
+  id: string;
+  full_name: string;
+  role: UserRole;
+}
+
+interface UpdateUserMutation {
+  id: string;
+  full_name: string;
+  role: UserRole;
+  updated_at: string;
+}
+
 export default function UserManagement() {
-  const [editingUser, setEditingUser] = useState<Profile | null>(null);
+  const [editingUser, setEditingUser] = useState<EditingUser | null>(null);
   const [newUser, setNewUser] = useState({
     full_name: '',
-    role: 'client' as Profile['role'],
-    avatar_url: null
+    role: 'client' as UserRole,
+    avatar_url: null as string | null,
+    email: '',
+    phone: '',
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString()
   });
   const queryClient = useQueryClient();
 
@@ -31,13 +50,21 @@ export default function UserManagement() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: async (user: Profile) => {
+    mutationFn: async (user: EditingUser) => {
+      const updateData: UpdateUserMutation = {
+        id: user.id,
+        full_name: user.full_name,
+        role: user.role,
+        updated_at: new Date().toISOString(),
+      };
+
       const { data, error } = await supabase
         .from('profiles')
-        .update(user)
+        .update(updateData)
         .eq('id', user.id)
         .select()
         .single();
+
       if (error) throw error;
       return data;
     },
@@ -65,21 +92,24 @@ export default function UserManagement() {
   });
 
   const createMutation = useMutation({
-    mutationFn: async (user: Omit<Profile, 'id' | 'created_at' | 'updated_at'>) => {
-      const { data, error } = await supabase
+    mutationFn: async (user: typeof newUser) => {
+      const { error } = await supabase
         .from('profiles')
         .insert([user])
         .select()
         .single();
       if (error) throw error;
-      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['users'] });
       setNewUser({
         full_name: '',
         role: 'client',
-        avatar_url: null
+        avatar_url: null,
+        email: '',
+        phone: '',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       });
       toast.success('User created successfully');
     },
@@ -118,7 +148,7 @@ export default function UserManagement() {
               <select
                 className="flex h-10 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm"
                 value={newUser.role}
-                onChange={(e) => setNewUser({ ...newUser, role: e.target.value as Profile['role'] })}
+                onChange={(e) => setNewUser({ ...newUser, role: e.target.value as UserRole })}
                 required
               >
                 <option value="client">Client</option>
@@ -159,18 +189,18 @@ export default function UserManagement() {
                         className="space-y-4"
                       >
                         <Input
-                          value={editingUser?.full_name}
+                          value={editingUser?.full_name ?? ''}
                           onChange={(e) =>
-                            setEditingUser((prev) => prev ? { ...prev, full_name: e.target.value } : null)
+                            setEditingUser(prev => prev ? { ...prev, full_name: e.target.value } : null)
                           }
                           placeholder="Full Name"
                           required
                         />
                         <select
                           className="flex h-10 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm"
-                          value={editingUser?.role}
+                          value={editingUser?.role ?? ''}
                           onChange={(e) =>
-                            setEditingUser((prev) => prev ? { ...prev, role: e.target.value as Profile['role'] } : null)
+                            setEditingUser(prev => prev ? { ...prev, role: e.target.value as UserRole } : null)
                           }
                           required
                         >

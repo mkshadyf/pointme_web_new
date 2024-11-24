@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Offline - PointMe</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #f8fafc;
+      color: #0f172a;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      text-align: center;
+    }
+
+    .container {
+      padding: 2rem;
+      max-width: 600px;
+    }
+
+    h1 {
+      font-size: 2rem;
+      margin-bottom: 1rem;
+    }
+
+    p {
+      margin-bottom: 2rem;
+      color: #64748b;
+      line-height: 1.5;
+    }
+
+    .icon {
+      width: 64px;
+      height: 64px;
+      margin-bottom: 2rem;
+    }
+
+    .button {
+      background: #0f172a;
+      color: white;
+      padding: 0.75rem 1.5rem;
+      border-radius: 0.5rem;
+      text-decoration: none;
+      font-weight: 500;
+      transition: background-color 0.2s;
+    }
+
+    .button:hover {
+      background: #1e293b;
+    }
+
+    .cached-data {
+      margin-top: 2rem;
+      padding: 1rem;
+      background: white;
+      border-radius: 0.5rem;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <svg class="icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" />
+    </svg>
+    <h1>You're Offline</h1>
+    <p>It looks like you've lost your internet connection. Don't worry - you can still access your cached data and we'll sync everything when you're back online.</p>
+    <a href="/" class="button">Try Again</a>
+    <div class="cached-data">
+      <h2>Available Offline</h2>
+      <ul id="cached-resources"></ul>
+    </div>
+  </div>
+  <script>
+    // Check which resources are available offline
+    async function checkCachedResources() {
+      const cache = await caches.open('pointme-v2');
+      const keys = await cache.keys();
+      const list = document.getElementById('cached-resources');
+      
+      keys.forEach(request => {
+        const li = document.createElement('li');
+        li.textContent = request.url.split('/').pop();
+        list.appendChild(li);
+      });
+    }
+
+    // Check online status
+    window.addEventListener('online', () => {
+      window.location.reload();
+    });
+
+    checkCachedResources();
+  </script>
+</body>
+</html> 

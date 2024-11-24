@@ -1,20 +1,29 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
-import { motion } from 'framer-motion';
 import { supabase } from '../../lib/supabase';
-import type { Category } from '../../lib/supabase';
-import { Button } from '../../components/ui/Button';
-import { Input } from '../../components/ui/Input';
 import { Card, CardHeader, CardTitle, CardContent } from '../../components/ui/Card';
+import { Input } from '../../components/ui/Input';
+import { Button } from '../../components/ui/Button';
 import toast from 'react-hot-toast';
+import type { Category } from '../../lib/supabase';
 
-export default function Categories() {
-  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
-  const [newCategory, setNewCategory] = useState({ name: '', description: '' });
+interface CategoryForm {
+  name: string;
+  description: string;
+  icon: string;
+}
+
+export default function AdminCategories() {
   const queryClient = useQueryClient();
+  const [newCategory, setNewCategory] = useState<CategoryForm>({
+    name: '',
+    description: '',
+    icon: '',
+  });
+  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
 
-  const { data: categories, isLoading } = useQuery({
+  const { data: categories, isLoading } = useQuery<Category[]>({
     queryKey: ['categories'],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -27,40 +36,42 @@ export default function Categories() {
   });
 
   const createMutation = useMutation({
-    mutationFn: async (category: { name: string; description: string }) => {
-      const { data, error } = await supabase
+    mutationFn: async (category: CategoryForm) => {
+      const { error } = await supabase
         .from('categories')
-        .insert([category])
-        .select()
-        .single();
+        .insert(category);
       if (error) throw error;
-      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['categories'] });
-      setNewCategory({ name: '', description: '' });
-      toast.success('Category created successfully');
+      setNewCategory({ name: '', description: '', icon: '' });
+      toast.success('Category added successfully');
     },
-    onError: () => toast.error('Failed to create category'),
+    onError: () => {
+      toast.error('Failed to add category');
+    },
   });
 
   const updateMutation = useMutation({
     mutationFn: async (category: Category) => {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('categories')
-        .update(category)
-        .eq('id', category.id)
-        .select()
-        .single();
+        .update({
+          name: category.name,
+          description: category.description,
+          icon: category.icon,
+        })
+        .eq('id', category.id);
       if (error) throw error;
-      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['categories'] });
       setEditingCategory(null);
       toast.success('Category updated successfully');
     },
-    onError: () => toast.error('Failed to update category'),
+    onError: () => {
+      toast.error('Failed to update category');
+    },
   });
 
   const deleteMutation = useMutation({
@@ -75,13 +86,15 @@ export default function Categories() {
       queryClient.invalidateQueries({ queryKey: ['categories'] });
       toast.success('Category deleted successfully');
     },
-    onError: () => toast.error('Failed to delete category'),
+    onError: () => {
+      toast.error('Failed to delete category');
+    },
   });
 
   if (isLoading) {
     return (
-      <div className="flex justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
+      <div className="flex justify-center items-center min-h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600" />
       </div>
     );
   }
@@ -100,21 +113,24 @@ export default function Categories() {
             }}
             className="space-y-4"
           >
-            <div>
-              <Input
-                placeholder="Category Name"
-                value={newCategory.name}
-                onChange={(e) => setNewCategory({ ...newCategory, name: e.target.value })}
-                required
-              />
-            </div>
-            <div>
-              <Input
-                placeholder="Description"
-                value={newCategory.description}
-                onChange={(e) => setNewCategory({ ...newCategory, description: e.target.value })}
-              />
-            </div>
+            <Input
+              placeholder="Category Name"
+              value={newCategory.name}
+              onChange={(e) => setNewCategory({ ...newCategory, name: e.target.value })}
+              required
+            />
+            <Input
+              placeholder="Description"
+              value={newCategory.description}
+              onChange={(e) => setNewCategory({ ...newCategory, description: e.target.value })}
+              required
+            />
+            <Input
+              placeholder="Icon (emoji or icon class)"
+              value={newCategory.icon}
+              onChange={(e) => setNewCategory({ ...newCategory, icon: e.target.value })}
+              required
+            />
             <Button type="submit" disabled={createMutation.isPending}>
               <Plus className="w-4 h-4 mr-2" />
               Add Category
@@ -123,15 +139,14 @@ export default function Categories() {
         </CardContent>
       </Card>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {categories?.map((category) => (
-          <motion.div
-            key={category.id}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-          >
-            <Card>
-              <CardContent className="p-6">
+      <Card>
+        <CardHeader>
+          <CardTitle>Manage Categories</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {categories?.map((category) => (
+              <div key={category.id} className="border rounded-md p-4">
                 {editingCategory?.id === category.id ? (
                   <form
                     onSubmit={(e) => {
@@ -145,15 +160,23 @@ export default function Categories() {
                     <Input
                       value={editingCategory.name}
                       onChange={(e) =>
-                        setEditingCategory({ ...editingCategory, name: e.target.value })
+                        setEditingCategory(prev => prev ? { ...prev, name: e.target.value } : null)
                       }
                       required
                     />
                     <Input
                       value={editingCategory.description || ''}
                       onChange={(e) =>
-                        setEditingCategory({ ...editingCategory, description: e.target.value })
+                        setEditingCategory(prev => prev ? { ...prev, description: e.target.value } : null)
                       }
+                      required
+                    />
+                    <Input
+                      value={editingCategory.icon || ''}
+                      onChange={(e) =>
+                        setEditingCategory(prev => prev ? { ...prev, icon: e.target.value } : null)
+                      }
+                      required
                     />
                     <div className="flex gap-2">
                       <Button type="submit" disabled={updateMutation.isPending}>
@@ -169,41 +192,42 @@ export default function Categories() {
                     </div>
                   </form>
                 ) : (
-                  <div>
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h3 className="font-semibold">{category.name}</h3>
-                        <p className="text-sm text-gray-600">{category.description}</p>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => setEditingCategory(category)}
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-red-600 hover:text-red-700"
-                          onClick={() => {
-                            if (confirm('Are you sure you want to delete this category?')) {
-                              deleteMutation.mutate(category.id);
-                            }
-                          }}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
+                  <>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-xl">{category.icon}</span>
+                      <h3 className="font-bold">{category.name}</h3>
                     </div>
-                  </div>
+                    <p className="text-sm text-gray-600 mb-4">
+                      {category.description}
+                    </p>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setEditingCategory(category)}
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-red-600 hover:text-red-700"
+                        onClick={() => {
+                          if (confirm('Are you sure you want to delete this category?')) {
+                            deleteMutation.mutate(category.id);
+                          }
+                        }}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </>
                 )}
-              </CardContent>
-            </Card>
-          </motion.div>
-        ))}
-      </div>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
